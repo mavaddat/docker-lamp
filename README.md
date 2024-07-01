@@ -21,6 +21,8 @@ With Ubuntu **20.04** and **18.04** images on the `latest-2004` and `latest-1804
     - [Creating a database](#creating-a-database)
       - [PHPMyAdmin](#phpmyadmin)
       - [Command Line](#command-line)
+      - [Initialization script](#initialization-script)
+    - [SQL initialization script](#sql-initialization-script)
 - [Adding your own content](#adding-your-own-content)
   - [Adding your app](#adding-your-app)
   - [Persisting your MySQL](#persisting-your-mysql)
@@ -42,7 +44,7 @@ With Ubuntu **20.04** and **18.04** images on the `latest-2004` and `latest-1804
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
-As a developer, part of my day to day role is to build LAMP applications. I searched in vein for an image that had everything I wanted, up-to-date packages, a simple interface, good documentation and active support. 
+As a developer, part of my day to day role is to build LAMP applications. I searched in vain for an image that had everything I wanted, up-to-date packages, a simple interface, good documentation and active support. 
 
 To complicate things even further I needed an image, or actually two, that would run my applications on both 14.04 and 16.04. Having two entirely separate workflows didn't make any sense to me, and Docker-LAMP was born.
 
@@ -51,15 +53,15 @@ Designed to be a single interface that just 'gets out of your way', and works on
 ## Image Versions
 > **NOTE:** [PHP 5.6 is end of life][end-of-life], so the PHP 5 images `mattrayner/lamp:latest-1404-php5` and `mattrayner/lamp:latest-1604-php5` will not receive any updates. Although these images will stay on Docker Hub, we **strongly** recommend updating you applications to PHP 7 or PHP 8.
 
-> **NOTE**: The 14.04 and 16.04 variants of this image are no longer being actively supported or updated.
+> **NOTE**: The 14.04, 16.04 and 18.04 variants of this image are no longer being actively supported or updated.
 
 There are four main 'versions' of the docker image. The table below shows the different tags you can use, along with the PHP, MySQL and Apache versions that come with it.
 
 Component | `latest-1404` | `latest-1604` | `latest-1804-php7` `latest-1804-php8` | `latest-2004-php7` `latest-2004-php8`
 ---|---|---|---|---
 [Apache][apache] | `2.4.7` | `2.4.18` | `2.4.29` | `2.4.41`
-[MySQL][mysql] | `5.5.62` | `5.7.30` | `5.7.35` | `8.0.26`
-[PHP][php] | `7.3.3` | `7.4.6` | `7.4.23`/`8.0.10` | `7.4.23`/`8.0.10`
+[MySQL][mysql] | `5.5.62` | `5.7.30` | `5.7.35` | `8.0.36`
+[PHP][php] | `7.3.3` | `7.4.6` | `7.4.23`/`8.0.10` | `7.4.33`/`8.0.30`
 [phpMyAdmin][phpmyadmin] | `4.8.5` | `5.0.2` | `5.1.1` | `5.1.1`
 
 
@@ -103,10 +105,11 @@ When you first run the image you'll see a message showing your `admin` user's pa
 If you need this login later, you can run `docker logs CONTAINER_ID` and you should see it at the top of the log.
 
 #### Creating a database
-So your application needs a database - you have two options...
+So your application needs a database - you have three options:
 
 1. PHPMyAdmin
 2. Command line
+3. Initialization script
 
 ##### PHPMyAdmin
 Docker-LAMP comes pre-installed with phpMyAdmin available from `http://DOCKER_ADDRESS/phpmyadmin`.
@@ -119,6 +122,19 @@ First, get the ID of your running container with `docker ps`, then run the below
 docker exec CONTAINER_ID  mysql -uroot -e "create database DATABASE_NAME"
 ```
 
+##### Initialization script
+See the [SQL initialization script section](#sql-initialization-script) for details.
+
+#### SQL initialization script
+Optionally, you can provide a SQL script which will run immediately after MySQL has been installed and configured, allowing you to run custom SQL e.g. to create a database, users or insert custom data.
+
+Please note that **the SQL initialization script runs only at the container first startup**. The script won't run if MySQL has already been configured (i.e. if the `/var/lib/mysql` contains initialized MySQL data).
+
+The below command will run the docker image `mattrayner/lamp:latest` interactively, exposing port `80` on the host machine with port `80` on the docker container. It will also create a volume linking the `script.sql` file within your current folder to the `/db/init.sql` file on the container. This is where the container expects the SQL initialization script to live.
+
+```bash
+docker run -i -t -p "80:80" -v ${PWD}/script.sql:/db/init.sql:ro mattrayner/lamp:latest
+```
 
 ## Adding your own content
 The 'easiest' way to add your own content to the lamp image is using Docker volumes. This will effectively 'sync' a particular folder on your machine with that on the docker container.
@@ -254,6 +270,21 @@ If you wish to submit a bug fix or feature, you can create a pull request and it
 5. Push to the branch (git push origin my-new-feature)
 6. Create a new Pull Request
 
+## Building / Releasing
+Manually building and releasing can be done with the following:
+
+```bash
+docker-compose -f docker-compose.test.yml -p ci build
+docker tag ci-web2004-php8 mattrayner/lamp:latest
+docker tag ci-web2004-php8 mattrayner/lamp:latest-2004
+docker tag ci-web2004-php8 mattrayner/lamp:latest-2004-php8
+docker tag ci-web2004-php7 mattrayner/lamp:latest-2004-php7
+
+docker push mattrayner/lamp:latest
+docker push mattrayner/lamp:latest-2004
+docker push mattrayner/lamp:latest-2004-php8
+docker push mattrayner/lamp:latest-2004-php7
+```
 
 ## License
 Docker-LAMP is licensed under the [Apache 2.0 License][info-license].
